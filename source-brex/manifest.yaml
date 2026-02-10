@@ -47,14 +47,8 @@ definitions:
         cursor_datetime_formats:
           - "%Y-%m-%d"
         datetime_format: "%Y-%m-%dT%H:%M:%S"
-        start_datetime:
-          type: MinMaxDatetime
-          datetime: "{{ config[\"start_date\"] }}"
-          datetime_format: "%Y-%m-%dT%H:%M:%SZ"
-        start_time_option:
-          type: RequestOption
-          inject_into: request_parameter
-          field_name: posted_at_start
+        location: request_parameter
+        field_name: posted_at_start
       schema_loader:
         type: InlineSchemaLoader
         schema:
@@ -187,22 +181,9 @@ definitions:
           - "%Y-%m-%dT%H:%M:%SZ"
           - "%Y-%m-%dT%H:%M:%S.%fZ"
         datetime_format: "%Y-%m-%dT%H:%M:%S"
-        start_datetime:
-          type: MinMaxDatetime
-          datetime: "{{ config[\"start_date\"] }}"
-          datetime_format: "%Y-%m-%dT%H:%M:%SZ"
-        start_time_option:
-          type: RequestOption
-          inject_into: request_parameter
-          field_name: updated_at_start
-        end_time_option:
-          type: RequestOption
-          inject_into: request_parameter
-          field_name: updated_at_end
-        end_datetime:
-          type: MinMaxDatetime
-          datetime: "{{ now_utc().strftime('%Y-%m-%dT%H:%M:%SZ') }}"
-          datetime_format: "%Y-%m-%dT%H:%M:%SZ"
+        location: request_parameter
+        field_name: updated_at_start
+        is_inclusive: true
       schema_loader:
         type: InlineSchemaLoader
         schema:
@@ -389,6 +370,7 @@ schemas:
               - "null"
       posted_at_date:
         type: string
+        format: date-time
     required:
       - id
       - posted_at_date
