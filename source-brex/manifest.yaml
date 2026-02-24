@@ -3,8 +3,8 @@ version: 5.15.0
 type: DeclarativeSource
 
 description: >-
-  Fetches data on users, expenses, transactions, vendors, and budgets from Brex
-  API.
+  Fetches data on users, expenses, transactions, vendors, budgets, cards, cash
+  accounts, cash account statements, and cash transactions from Brex API.
 
 check:
   type: CheckStream
@@ -219,6 +219,153 @@ definitions:
         type: InlineSchemaLoader
         schema:
           $ref: "#/schemas/budgets"
+    cards:
+      type: DeclarativeStream
+      name: cards
+      primary_key:
+        - id
+      retriever:
+        type: SimpleRetriever
+        requester:
+          $ref: "#/definitions/base_requester"
+          path: /v2/cards
+          http_method: GET
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - items
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            inject_into: request_parameter
+            field_name: cursor
+          pagination_strategy:
+            type: CursorPagination
+            cursor_value: "{{ response.get('next_cursor') }}"
+            stop_condition: "{{ response.get('next_cursor') is none }}"
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: "#/schemas/cards"
+    cash_accounts:
+      type: DeclarativeStream
+      name: cash_accounts
+      primary_key:
+        - id
+      retriever:
+        type: SimpleRetriever
+        requester:
+          $ref: "#/definitions/base_requester"
+          path: /v2/accounts/cash
+          http_method: GET
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - items
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            inject_into: request_parameter
+            field_name: cursor
+          pagination_strategy:
+            type: CursorPagination
+            cursor_value: "{{ response.get('next_cursor') }}"
+            stop_condition: "{{ response.get('next_cursor') is none }}"
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: "#/schemas/cash_accounts"
+    cash_account_statements:
+      type: DeclarativeStream
+      name: cash_account_statements
+      primary_key:
+        - id
+      retriever:
+        type: SimpleRetriever
+        requester:
+          $ref: "#/definitions/base_requester"
+          path: /v2/accounts/cash/{{ stream_partition.id }}/statements
+          http_method: GET
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - items
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            inject_into: request_parameter
+            field_name: cursor
+          pagination_strategy:
+            type: CursorPagination
+            cursor_value: "{{ response.get('next_cursor') }}"
+            stop_condition: "{{ response.get('next_cursor') is none }}"
+        partition_router:
+          - type: SubstreamPartitionRouter
+            parent_stream_configs:
+              - stream:
+                  $ref: "#/definitions/streams/cash_accounts"
+                parent_key: id
+                partition_field: id
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: "#/schemas/cash_account_statements"
+    cash_transactions:
+      type: DeclarativeStream
+      name: cash_transactions
+      primary_key:
+        - id
+      retriever:
+        type: SimpleRetriever
+        requester:
+          $ref: "#/definitions/base_requester"
+          path: /v2/transactions/cash/{{ stream_partition.id }}
+          http_method: GET
+        record_selector:
+          type: RecordSelector
+          extractor:
+            type: DpathExtractor
+            field_path:
+              - items
+        paginator:
+          type: DefaultPaginator
+          page_token_option:
+            type: RequestOption
+            inject_into: request_parameter
+            field_name: cursor
+          pagination_strategy:
+            type: CursorPagination
+            cursor_value: "{{ response.get('next_cursor') }}"
+            stop_condition: "{{ response.get('next_cursor') is none }}"
+        partition_router:
+          - type: SubstreamPartitionRouter
+            parent_stream_configs:
+              - stream:
+                  $ref: "#/definitions/streams/cash_accounts"
+                parent_key: id
+                partition_field: id
+      incremental_sync:
+        type: DatetimeBasedCursor
+        cursor_field: posted_at_date
+        lookback_window: P1D
+        cursor_datetime_formats:
+          - "%Y-%m-%d"
+        datetime_format: "%Y-%m-%dT%H:%M:%S"
+        location: request_parameter
+        field_name: posted_at_start
+      schema_loader:
+        type: InlineSchemaLoader
+        schema:
+          $ref: "#/schemas/cash_transactions"
   base_requester:
     type: HttpRequester
     url_base: https://platform.brexapis.com
@@ -233,6 +380,10 @@ streams:
   - $ref: "#/definitions/streams/vendors"
   - $ref: "#/definitions/streams/expenses"
   - $ref: "#/definitions/streams/budgets"
+  - $ref: "#/definitions/streams/cards"
+  - $ref: "#/definitions/streams/cash_accounts"
+  - $ref: "#/definitions/streams/cash_account_statements"
+  - $ref: "#/definitions/streams/cash_transactions"
 
 spec:
   type: Spec
@@ -268,6 +419,10 @@ metadata:
     vendors: false
     expenses: false
     budgets: false
+    cards: false
+    cash_accounts: false
+    cash_account_statements: false
+    cash_transactions: false
   testedStreams:
     transactions:
       streamHash: 9095688de0c91a5eafb2969f27859182d0eb1329
@@ -311,6 +466,34 @@ metadata:
       hasRecords: true
       primaryKeysArePresent: true
       primaryKeysAreUnique: true
+    cards:
+      streamHash: ""
+      hasResponse: false
+      responsesAreSuccessful: false
+      hasRecords: false
+      primaryKeysArePresent: false
+      primaryKeysAreUnique: false
+    cash_accounts:
+      streamHash: ""
+      hasResponse: false
+      responsesAreSuccessful: false
+      hasRecords: false
+      primaryKeysArePresent: false
+      primaryKeysAreUnique: false
+    cash_account_statements:
+      streamHash: ""
+      hasResponse: false
+      responsesAreSuccessful: false
+      hasRecords: false
+      primaryKeysArePresent: false
+      primaryKeysAreUnique: false
+    cash_transactions:
+      streamHash: ""
+      hasResponse: false
+      responsesAreSuccessful: false
+      hasRecords: false
+      primaryKeysArePresent: false
+      primaryKeysAreUnique: false
   assist:
     docsUrl: https://developer.brex.com/openapi/transactions_api/
 
@@ -439,7 +622,8 @@ schemas:
         type:
           - string
           - "null"
-
+    required:
+      - id
   departments:
     type: object
     $schema: http://json-schema.org/draft-07/schema#
@@ -455,6 +639,8 @@ schemas:
         type:
           - string
           - "null"
+    required:
+      - id
   vendors:
     type: object
     $schema: http://json-schema.org/draft-07/schema#
@@ -511,7 +697,8 @@ schemas:
                 account_type:
                   type:
                     - string
-
+    required:
+      - id
   expenses:
     type: object
     $schema: http://json-schema.org/draft-07/schema#
@@ -814,7 +1001,8 @@ schemas:
           - string
           - "null"
         format: date-time
-        
+    required:
+      - id
   budgets:
     type: object
     $schema: http://json-schema.org/draft-07/schema#
@@ -892,3 +1080,331 @@ schemas:
         type:
           - string
           - "null"
+    required:
+      - budget_id
+  cards:
+    type: object
+    $schema: http://json-schema.org/draft-07/schema#
+    additionalProperties: true
+    properties:
+      id:
+        type:
+          - string
+          - "null"
+      owner:
+        type:
+          - object
+          - "null"
+        properties:
+          type:
+            type:
+              - string
+              - "null"
+          user_id:
+            type:
+              - string
+              - "null"
+      status:
+        type:
+          - string
+          - "null"
+      last_four:
+        type:
+          - string
+          - "null"
+      card_name:
+        type:
+          - string
+          - "null"
+      card_type:
+        type:
+          - string
+          - "null"
+      limit_type:
+        type:
+          - string
+          - "null"
+      spend_controls:
+        type:
+          - object
+          - "null"
+        properties:
+          spend_limit:
+            type:
+              - object
+              - "null"
+            properties:
+              amount:
+                type:
+                  - integer
+                  - "null"
+              currency:
+                type:
+                  - string
+                  - "null"
+          spend_available:
+            type:
+              - object
+              - "null"
+            properties:
+              amount:
+                type:
+                  - integer
+                  - "null"
+              currency:
+                type:
+                  - string
+                  - "null"
+          spend_duration:
+            type:
+              - string
+              - "null"
+      billing_address:
+        type:
+          - object
+          - "null"
+        properties:
+          line1:
+            type:
+              - string
+              - "null"
+          line2:
+            type:
+              - string
+              - "null"
+          city:
+            type:
+              - string
+              - "null"
+          state:
+            type:
+              - string
+              - "null"
+          country:
+            type:
+              - string
+              - "null"
+          postal_code:
+            type:
+              - string
+              - "null"
+          phone_number:
+            type:
+              - string
+              - "null"
+      mailing_address:
+        type:
+          - object
+          - "null"
+        properties:
+          line1:
+            type:
+              - string
+              - "null"
+          line2:
+            type:
+              - string
+              - "null"
+          city:
+            type:
+              - string
+              - "null"
+          state:
+            type:
+              - string
+              - "null"
+          country:
+            type:
+              - string
+              - "null"
+          postal_code:
+            type:
+              - string
+              - "null"
+          phone_number:
+            type:
+              - string
+              - "null"
+      expiration_date:
+        type:
+          - object
+          - "null"
+        properties:
+          month:
+            type:
+              - integer
+              - "null"
+          year:
+            type:
+              - integer
+              - "null"
+      has_been_transferred:
+        type:
+          - boolean
+          - "null"
+      metadata:
+        type:
+          - object
+          - "null"
+      budget_id:
+        type:
+          - string
+          - "null"
+    required:
+      - id
+  cash_accounts:
+    type: object
+    $schema: http://json-schema.org/draft-07/schema#
+    additionalProperties: true
+    properties:
+      id:
+        type:
+          - string
+          - "null"
+      name:
+        type:
+          - string
+          - "null"
+      status:
+        type:
+          - string
+          - "null"
+      current_balance:
+        type:
+          - object
+          - "null"
+        properties:
+          amount:
+            type:
+              - integer
+              - "null"
+          currency:
+            type:
+              - string
+              - "null"
+      available_balance:
+        type:
+          - object
+          - "null"
+        properties:
+          amount:
+            type:
+              - integer
+              - "null"
+          currency:
+            type:
+              - string
+              - "null"
+      account_number:
+        type:
+          - string
+          - "null"
+      routing_number:
+        type:
+          - string
+          - "null"
+      primary:
+        type:
+          - boolean
+          - "null"
+    required:
+      - id
+  cash_account_statements:
+    type: object
+    $schema: http://json-schema.org/draft-07/schema#
+    additionalProperties: true
+    properties:
+      id:
+        type:
+          - string
+          - "null"
+      start_balance:
+        type:
+          - object
+          - "null"
+        properties:
+          amount:
+            type:
+              - integer
+              - "null"
+          currency:
+            type:
+              - string
+              - "null"
+      end_balance:
+        type:
+          - object
+          - "null"
+        properties:
+          amount:
+            type:
+              - integer
+              - "null"
+          currency:
+            type:
+              - string
+              - "null"
+      period:
+        type:
+          - object
+          - "null"
+        properties:
+          start_date:
+            type:
+              - string
+              - "null"
+            format: date
+          end_date:
+            type:
+              - string
+              - "null"
+            format: date
+    required:
+      - id
+  cash_transactions:
+    type: object
+    $schema: http://json-schema.org/draft-07/schema#
+    additionalProperties: true
+    properties:
+      id:
+        type:
+          - string
+          - "null"
+      description:
+        type:
+          - string
+          - "null"
+      amount:
+        type:
+          - object
+          - "null"
+        properties:
+          amount:
+            type:
+              - integer
+              - "null"
+          currency:
+            type:
+              - string
+              - "null"
+      initiated_at_date:
+        type:
+          - string
+          - "null"
+        format: date
+      posted_at_date:
+        type:
+          - string
+          - "null"
+        format: date-time
+      type:
+        type:
+          - string
+          - "null"
+      transfer_id:
+        type:
+          - string
+          - "null"
+    required:
+      - id
+      - posted_at_date
