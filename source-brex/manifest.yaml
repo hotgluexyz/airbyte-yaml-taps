@@ -552,9 +552,7 @@ schemas:
               - string
               - "null"
       posted_at_date:
-        type: 
-          - string
-          - "null"
+        type: string
         format: date-time
     required:
       - id
@@ -565,9 +563,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
 
       first_name:
         type:
@@ -647,9 +643,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
 
       company_name:
         type:
@@ -1009,9 +1003,7 @@ schemas:
     additionalProperties: true
     properties:
       budget_id:
-        type:
-          - string
-          - "null"
+        type: string
 
       account_id:
         type:
@@ -1088,9 +1080,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
       owner:
         type:
           - object
@@ -1258,9 +1248,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
       name:
         type:
           - string
@@ -1315,9 +1303,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
       start_balance:
         type:
           - object
@@ -1367,9 +1353,7 @@ schemas:
     additionalProperties: true
     properties:
       id:
-        type:
-          - string
-          - "null"
+        type: string
       description:
         type:
           - string
@@ -1393,10 +1377,8 @@ schemas:
           - "null"
         format: date
       posted_at_date:
-        type:
-          - string
-          - "null"
-        format: date-time
+        type: string
+        format: date
       type:
         type:
           - string
