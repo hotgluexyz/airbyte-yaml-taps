@@ -1378,7 +1378,7 @@ schemas:
         format: date
       posted_at_date:
         type: string
-        format: date
+        format: date-time
       type:
         type:
           - string
